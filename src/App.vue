@@ -1,21 +1,42 @@
 <template>
   <div id="app">
-    <h1>APP On/Off Light</h1>
-    <img v-if="(ligthStatus === 'on')" src="./assets/on.png">
-    <img v-if="(ligthStatus === 'off')" src="./assets/off.png"><br/>
-    <label class="toggle_switch"><input type="checkbox" v-model="ligthChecked" v-on:click="updateLigth"><span class="slider"></span></label><br/>
+    <div class="split left">
+      <div class="centered">
+        <h1>APP On/Off Light</h1>
+        <img v-if="(ligthStatus === 'on')" src="./assets/on.png">
+        <img v-if="(ligthStatus === 'off')" src="./assets/off.png"><br/>
+        <label class="toggle_switch"><input type="checkbox" v-model="ligthChecked" v-on:click="updateLigth"><span class="slider"></span></label>  
+      </div>
+    </div>
+    <div class="split right">
+      <div class="centered">
+        <table id="ligths">
+          <tr>
+            <th>Who</th>
+            <th>Message</th>
+            <th>Status</th>
+          </tr>
+          <tr v-for="(item, index) in ligths" v-bind:key="index">
+            <td>{{ item.Name }} ( {{ item.User }} )</td>
+            <td>{{ item.Message }}</td>
+            <td style="text-align: center">{{ item.Status }}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+    <br/>
   </div>
 </template>
 
 <script>
-import firebase from'./Firebase' 
-
+import Axios from 'axios'
 export default {
   name: 'app',
   data() {
     return {
       ligthStatus: 'off',
       ligthChecked: false,
+      ligths: []
     }
   },
   mounted () {
@@ -27,27 +48,39 @@ export default {
   },
   methods: {
     getLigthStatus() {
-      var self = this;
-      var ligthReference = firebase.database().ref("/Ligths/000/");
-      ligthReference.on("value", function(snapshot) {
-          self.ligthStatus = snapshot.val().Status;
-          self.ligthChecked = self.ligthStatus === 'on' ? true : false;
-          ligthReference.off("value");
-      }, 
-      function (errorObject) { console.log("The read failed: " + errorObject.code); });
+      Axios.get("/ligthstatus").then((response)=> {
+        response = response.data
+        this.ligthStatus = response.Status
+        this.ligthChecked = this.ligthStatus === 'on' ? true : false;
+        this.getLigth()
+      }).catch((error) => {
+        console.log(error.response.data)
+      })
     },
     updateLigth() {
-      this.ligthStatus = this.ligthChecked ? 'off' : 'on';
-      var referencePath = '/Ligths/000/';
-      var ligthReference = firebase.database().ref(referencePath);
-      ligthReference.set({Name: 'ligth', Message: '', Status: this.ligthStatus}, function(error) {
-          if (error) {
-              console.log("Data could not be saved." + error );
-          } 
-          else {
-              console.log("Data saved successfully.");
-          }
+      var tmpligthChecked = this.ligthChecked ? false : true;
+      var tmpligthStatus = this.ligthChecked ? 'off' : 'on';
+      Axios.post('/ligth', {
+        User: '001',
+        Name: 'Paul',
+        Message: '',
+        Status: tmpligthStatus
+      })
+      .then(function (response) {
+        console.log(response);
+        this.ligthChecked = tmpligthChecked
+        this.ligthStatus = tmpligthStatus
+      })
+      .catch(function (error) {
+        console.log(error);
       });
+    },
+    getLigth() {
+       Axios.get("/ligth").then((response)=> {
+        this.ligths = response.data
+      }).catch((error) => {
+        console.log(error.response.data)
+      })
     }
   }
 }
@@ -119,4 +152,64 @@ export default {
  .slider { border-radius: 50px; }
  
  .slider:before { border-radius: 100%; }
+
+ /* Split the screen in half */
+.split {
+  height: 100%;
+  width: 50%;
+  position: fixed;
+  z-index: 1;
+  top: 0;
+  overflow-x: hidden;
+  padding-top: 20px;
+}
+
+/* Control the left side */
+.left {
+  left: 0;
+  background-color: #FFF;
+}
+
+/* Control the right side */
+.right {
+  right: 0;
+  background-color: #FFF;
+}
+
+/* If you want the content centered horizontally and vertically */
+.centered {
+  width: 100%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+#ligths {
+  font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+  border-collapse: collapse;
+  width: 90%;
+}
+
+#ligths td, #ligths th {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+
+#ligths td{
+  text-align: left;
+}
+
+#ligths tr:nth-child(even){background-color: #f2f2f2;}
+
+#ligths tr:hover {background-color: #ddd;}
+
+#ligths th {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  text-align: left;
+  background-color: #4CAF50;
+  color: white;
+}
 </style>
